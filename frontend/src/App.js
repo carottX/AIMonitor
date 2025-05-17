@@ -22,7 +22,7 @@ function App() {
           setTrainingId(data.trainings[data.trainings.length - 1]); // 默认选最新
         }
       });
-  }, []);
+  }, [trainingId]);
 
   // 初始化和重连WebSocket
   useEffect(() => {
