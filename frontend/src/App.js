@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 
+// 可自定义y轴范围
+const LOSS_MIN = 0;
+const LOSS_MAX = 2; // 你可以根据实际情况调整
+const ACC_MIN = 0;
+const ACC_MAX = 1;
+
 function App() {
   const [trainingId, setTrainingId] = useState('');
   const [allTrainings, setAllTrainings] = useState([]);
@@ -11,6 +17,12 @@ function App() {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const wsRef = useRef(null);
+
+  // 阈值状态
+  const [lossMin, setLossMin] = useState(0);
+  const [lossMax, setLossMax] = useState(2);
+  const [accMin, setAccMin] = useState(0);
+  const [accMax, setAccMax] = useState(1);
 
   // 获取所有训练ID（仅首次加载时获取）
   useEffect(() => {
@@ -50,11 +62,7 @@ function App() {
       if (event.data === 'ping') return;
       const data = JSON.parse(event.data);
       setMetrics(data);
-      setHistory(h => {
-        // 只保留最近10条
-        const newHist = [...h, data].slice(-10);
-        return newHist;
-      });
+      setHistory(h => [...h, data]); // 不再slice(-10)，保留全部
     };
     return () => {
       ws.close();
@@ -76,6 +84,7 @@ function App() {
               data: [],
               borderColor: 'red',
               fill: false,
+              yAxisID: 'y',
             },
             {
               label: 'Accuracy',
@@ -90,13 +99,30 @@ function App() {
           responsive: true,
           plugins: { legend: { display: true } },
           scales: {
-            y: { type: 'linear', position: 'left', title: { display: true, text: 'Loss' } },
-            y2: { type: 'linear', position: 'right', title: { display: true, text: 'Accuracy' }, grid: { drawOnChartArea: false } },
+            y: {
+              type: 'linear', position: 'left', title: { display: true, text: 'Loss' },
+              min: lossMin, max: lossMax
+            },
+            y2: {
+              type: 'linear', position: 'right', title: { display: true, text: 'Accuracy' },
+              grid: { drawOnChartArea: false },
+              min: accMin, max: accMax
+            },
           },
         },
       });
     }
   }, []);
+
+  // 动态更新y轴阈值
+  useEffect(() => {
+    if (!chartInstance.current) return;
+    chartInstance.current.options.scales.y.min = lossMin;
+    chartInstance.current.options.scales.y.max = lossMax;
+    chartInstance.current.options.scales.y2.min = accMin;
+    chartInstance.current.options.scales.y2.max = accMax;
+    chartInstance.current.update();
+  }, [lossMin, lossMax, accMin, accMax]);
 
   // 更新Chart数据
   useEffect(() => {
@@ -152,11 +178,26 @@ function App() {
           </div>}
         </div>
         <div style={cardStyle}>
-          <strong style={{ fontSize: 18, color: '#2b4a6f' }}>Loss/Accuracy 曲线（最近10条）</strong>
+          <strong style={{ fontSize: 18, color: '#2b4a6f' }}>Loss/Accuracy 曲线（所有历史数据）</strong>
           <canvas ref={chartRef} height={320}></canvas>
         </div>
         <div style={{ marginTop: 16, color: '#888', fontSize: 13, textAlign: 'center' }}>
           {history.length === 0 ? '等待训练数据推送...' : `已接收 ${history.length} 条数据`}
+        </div>
+        {/* 阈值设置区域 */}
+        <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={labelStyle}>Loss范围:</span>
+            <input type="number" value={lossMin} onChange={e => setLossMin(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
+            <span>~</span>
+            <input type="number" value={lossMax} onChange={e => setLossMax(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ ...labelStyle, marginLeft: 0 }}>Accuracy范围:</span>
+            <input type="number" value={accMin} onChange={e => setAccMin(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
+            <span>~</span>
+            <input type="number" value={accMax} onChange={e => setAccMax(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
+          </div>
         </div>
       </div>
     </div>
