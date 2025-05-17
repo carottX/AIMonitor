@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 
 function App() {
-  const [trainingId, setTrainingId] = useState('demo-training');
+  const [trainingId, setTrainingId] = useState('');
+  const [allTrainings, setAllTrainings] = useState([]);
   const [metrics, setMetrics] = useState({});
   const [history, setHistory] = useState([]); // 存储历史点
   const [status, setStatus] = useState('connecting'); // connecting/ok/error
@@ -10,6 +11,18 @@ function App() {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const wsRef = useRef(null);
+
+  // 获取所有训练ID
+  useEffect(() => {
+    fetch('http://localhost:8000/api/v1/trainings')
+      .then(res => res.json())
+      .then(data => {
+        setAllTrainings(data.trainings || []);
+        if (!trainingId && data.trainings && data.trainings.length > 0) {
+          setTrainingId(data.trainings[data.trainings.length - 1]); // 默认选最新
+        }
+      });
+  }, []);
 
   // 初始化和重连WebSocket
   useEffect(() => {
@@ -96,7 +109,10 @@ function App() {
       <h2>AI训练实时监控</h2>
       <div style={{ marginBottom: 10 }}>
         <label>Training ID: </label>
-        <input value={trainingId} onChange={e => setTrainingId(e.target.value)} style={{ width: 220 }} />
+        <select value={trainingId} onChange={e => setTrainingId(e.target.value)} style={{ width: 240 }}>
+          <option value="" disabled>请选择训练任务</option>
+          {allTrainings.map(tid => <option key={tid} value={tid}>{tid}</option>)}
+        </select>
         <span style={{ marginLeft: 16, color: status==='ok'?'green':'orange' }}>{status==='ok'?'● 已连接': status==='connecting'?'● 连接中':'● 断开'}</span>
       </div>
       {errorMsg && <div style={{ color: 'red', marginBottom: 10 }}>{errorMsg}</div>}

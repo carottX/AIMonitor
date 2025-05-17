@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, root_validator
@@ -70,6 +70,11 @@ async def report_progress(data: ProgressReport):
     manager.latest_data[training_id] = d
     await manager.broadcast(training_id, d)
     return {"status": "success", "message": "Progress reported"}
+
+@app.get("/api/v1/trainings")
+def list_trainings():
+    """返回所有已上报过的training_id列表"""
+    return {"trainings": list(manager.latest_data.keys())}
 
 @app.websocket("/ws/{training_id}")
 async def websocket_endpoint(websocket: WebSocket, training_id: str):
