@@ -51,6 +51,7 @@ function App() {
       const data = JSON.parse(event.data);
       setMetrics(data);
       setHistory(h => [...h, data]);
+      setStatus('ok'); // 只要收到数据就切换为已连接
     };
     return () => {
       ws.close();
