@@ -12,7 +12,7 @@ function App() {
   const chartInstance = useRef(null);
   const wsRef = useRef(null);
 
-  // 获取所有训练ID
+  // 获取所有训练ID（仅首次加载时获取）
   useEffect(() => {
     fetch('/api/v1/trainings')
       .then(res => res.json())
@@ -22,7 +22,7 @@ function App() {
           setTrainingId(data.trainings[data.trainings.length - 1]); // 默认选最新
         }
       });
-  }, [trainingId]);
+  }, []); // 只在首次加载时获取
 
   // 初始化和重连WebSocket
   useEffect(() => {
@@ -51,7 +51,7 @@ function App() {
       const data = JSON.parse(event.data);
       setMetrics(data);
       setHistory(h => [...h, data]);
-      setStatus('ok'); // 只要收到数据就切换为已连接
+      // 不再 setStatus('ok')，只在 onopen 时设置
     };
     return () => {
       ws.close();
