@@ -21,9 +21,9 @@ function App() {
   // 阈值状态
   const [lossMin, setLossMin] = useState(0);
   const [lossMax, setLossMax] = useState(2);
-  const [accMin, setAccMin] = useState(0);
-  const [accMax, setAccMax] = useState(1);
   const [showThreshold, setShowThreshold] = useState(false);
+  const [showMetrics, setShowMetrics] = useState(true);
+  const [showChart, setShowChart] = useState(true);
 
   // 获取所有训练ID（仅首次加载时获取）
   useEffect(() => {
@@ -86,6 +86,9 @@ function App() {
               borderColor: 'red',
               fill: false,
               yAxisID: 'y',
+              pointRadius: 0, // 不显示点
+              pointHoverRadius: 0, // 悬停也不显示点
+              tension: 0.3 // 平滑曲线，可调
             },
           ],
         },
@@ -149,6 +152,14 @@ function App() {
     <div style={{ minHeight: '100vh', width: '100vw', background: '#f4f6fa', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
       <div style={{ width: '100%', maxWidth: 800, margin: '0 auto', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
         <h2 style={{ textAlign: 'center', margin: '32px 0 16px 0', color: '#2b4a6f' }}>AI训练实时监控</h2>
+        <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <label style={labelStyle}>Training ID:</label>
+          <select value={trainingId} onChange={e => setTrainingId(e.target.value)} style={{ width: 260, height: 32, borderRadius: 6, border: '1px solid #bbb', padding: '0 8px' }}>
+            <option value="" disabled>请选择训练任务</option>
+            {allTrainings.map(tid => <option key={tid} value={tid}>{tid}</option>)}
+          </select>
+          <span style={{ marginLeft: 16, color: status==='ok'?'#52c41a':status==='connecting'?'#faad14':'#f5222d', fontWeight: 700 }}>{status==='ok'?'● 已连接': status==='connecting'?'● 连接中':'● 断开'}</span>
+        </div>
         {/* 阈值设置区域（可折叠） */}
         <div style={{ marginBottom: 18 }}>
           <button onClick={() => setShowThreshold(v => !v)} style={{ background: '#2b4a6f', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 16px', cursor: 'pointer', fontWeight: 500, marginBottom: 8 }}>
@@ -160,39 +171,42 @@ function App() {
               <input type="number" value={lossMin} onChange={e => setLossMin(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
               <span>~</span>
               <input type="number" value={lossMax} onChange={e => setLossMax(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
-              <span style={{ marginLeft: 24, ...labelStyle }}>Accuracy范围:</span>
-              <input type="number" value={accMin} onChange={e => setAccMin(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
-              <span>~</span>
-              <input type="number" value={accMax} onChange={e => setAccMax(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
             </div>
           )}
         </div>
-        <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <label style={labelStyle}>Training ID:</label>
-          <select value={trainingId} onChange={e => setTrainingId(e.target.value)} style={{ width: 260, height: 32, borderRadius: 6, border: '1px solid #bbb', padding: '0 8px' }}>
-            <option value="" disabled>请选择训练任务</option>
-            {allTrainings.map(tid => <option key={tid} value={tid}>{tid}</option>)}
-          </select>
-          <span style={{ marginLeft: 16, color: status==='ok'?'#52c41a':status==='connecting'?'#faad14':'#f5222d', fontWeight: 700 }}>{status==='ok'?'● 已连接': status==='connecting'?'● 连接中':'● 断开'}</span>
+        {/* 最新指标区（可折叠） */}
+        <div style={{ marginBottom: 8 }}>
+          <button onClick={() => setShowMetrics(v => !v)} style={{ background: '#2b4a6f', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 16px', cursor: 'pointer', fontWeight: 500, marginBottom: 8 }}>
+            {showMetrics ? '收起最新指标 ▲' : '展开最新指标 ▼'}
+          </button>
+          {showMetrics && (
+            <div style={cardStyle}>
+              <strong style={{ fontSize: 18, color: '#2b4a6f' }}>最新指标</strong>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, margin: '16px 0' }}>
+                <div><span style={labelStyle}>Epoch:</span><span style={valueStyle}>{metrics.epoch}</span></div>
+                <div><span style={labelStyle}>Batch:</span><span style={valueStyle}>{metrics.batch}</span></div>
+                <div><span style={labelStyle}>Loss:</span><span style={valueStyle}>{metrics.loss}</span></div>
+                <div><span style={labelStyle}>Learning Rate:</span><span style={valueStyle}>{metrics.learning_rate}</span></div>
+              </div>
+              {Object.keys(customMetrics).length > 0 && <div style={{ marginTop: 8 }}>自定义指标:
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {Object.entries(customMetrics).map(([k, v]) => <li key={k}>{k}: {v}</li>)}
+                </ul>
+              </div>}
+            </div>
+          )}
         </div>
-        {errorMsg && <div style={{ color: '#f5222d', marginBottom: 10 }}>{errorMsg}</div>}
-        <div style={cardStyle}>
-          <strong style={{ fontSize: 18, color: '#2b4a6f' }}>最新指标</strong>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, margin: '16px 0' }}>
-            <div><span style={labelStyle}>Epoch:</span><span style={valueStyle}>{metrics.epoch}</span></div>
-            <div><span style={labelStyle}>Batch:</span><span style={valueStyle}>{metrics.batch}</span></div>
-            <div><span style={labelStyle}>Loss:</span><span style={valueStyle}>{metrics.loss}</span></div>
-            <div><span style={labelStyle}>Learning Rate:</span><span style={valueStyle}>{metrics.learning_rate}</span></div>
-          </div>
-          {Object.keys(customMetrics).length > 0 && <div style={{ marginTop: 8 }}>自定义指标:
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {Object.entries(customMetrics).map(([k, v]) => <li key={k}>{k}: {v}</li>)}
-            </ul>
-          </div>}
-        </div>
-        <div style={cardStyle}>
-          <strong style={{ fontSize: 18, color: '#2b4a6f' }}>Loss 曲线（所有历史数据）</strong>
-          <canvas ref={chartRef} height={320}></canvas>
+        {/* Loss图表区（可折叠） */}
+        <div style={{ marginBottom: 8 }}>
+          <button onClick={() => setShowChart(v => !v)} style={{ background: '#2b4a6f', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 16px', cursor: 'pointer', fontWeight: 500, marginBottom: 8 }}>
+            {showChart ? '收起Loss曲线 ▲' : '展开Loss曲线 ▼'}
+          </button>
+          {showChart && (
+            <div style={cardStyle}>
+              <strong style={{ fontSize: 18, color: '#2b4a6f' }}>Loss 曲线（所有历史数据）</strong>
+              <canvas ref={chartRef} height={320}></canvas>
+            </div>
+          )}
         </div>
         <div style={{ marginTop: 16, color: '#888', fontSize: 13, textAlign: 'center' }}>
           {history.length === 0 ? '等待训练数据推送...' : `已接收 ${history.length} 条数据`}

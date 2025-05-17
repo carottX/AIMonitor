@@ -51,15 +51,16 @@ if __name__ == "__main__":
             loss = 1.0 / (epoch * batch)
             accuracy = 0.5 + 0.5 * epoch / num_epochs
             lr = 0.01
-            report_progress_to_server(
-                epoch=epoch,
-                loss=loss,
-                accuracy=accuracy,
-                batch=batch,
-                total_batches=batches_per_epoch,
-                lr=lr,
-                custom_metrics={"gpu_mem": f"{batch*100}MB"}
-            )
+            if(batch % 10 == 0):
+                report_progress_to_server(
+                    epoch=epoch,
+                    loss=loss,
+                    accuracy=accuracy,
+                    batch=batch,
+                    total_batches=batches_per_epoch,
+                    lr=lr,
+                    custom_metrics={"gpu_mem": f"{batch*100}MB"}
+                )
         # 每个epoch结束也可上报一次
         report_progress_to_server(
             epoch=epoch,
