@@ -14,7 +14,7 @@ function App() {
 
   // 获取所有训练ID
   useEffect(() => {
-    fetch('http://localhost:8000/api/v1/trainings')
+    fetch('/api/v1/trainings')
       .then(res => res.json())
       .then(data => {
         setAllTrainings(data.trainings || []);
@@ -31,7 +31,10 @@ function App() {
     let reconnectTimer;
     setStatus('connecting');
     setErrorMsg('');
-    ws = new window.WebSocket(`ws://localhost:8000/ws/${trainingId}`);
+    // 自动适配 ws/wss 及 host
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const wsUrl = wsProtocol + window.location.host + `/ws/${trainingId}`;
+    ws = new window.WebSocket(wsUrl);
     wsRef.current = ws;
     ws.onopen = () => setStatus('ok');
     ws.onerror = (e) => {
