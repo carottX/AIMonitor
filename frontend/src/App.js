@@ -23,6 +23,7 @@ function App() {
   const [lossMax, setLossMax] = useState(2);
   const [accMin, setAccMin] = useState(0);
   const [accMax, setAccMax] = useState(1);
+  const [showThreshold, setShowThreshold] = useState(false);
 
   // 获取所有训练ID（仅首次加载时获取）
   useEffect(() => {
@@ -86,27 +87,19 @@ function App() {
               fill: false,
               yAxisID: 'y',
             },
-            {
-              label: 'Accuracy',
-              data: [],
-              borderColor: 'blue',
-              fill: false,
-              yAxisID: 'y2',
-            },
           ],
         },
         options: {
           responsive: true,
           plugins: { legend: { display: true } },
           scales: {
+            x: {
+              type: 'category',
+              title: { display: true, text: 'Time' },
+            },
             y: {
               type: 'linear', position: 'left', title: { display: true, text: 'Loss' },
               min: lossMin, max: lossMax
-            },
-            y2: {
-              type: 'linear', position: 'right', title: { display: true, text: 'Accuracy' },
-              grid: { drawOnChartArea: false },
-              min: accMin, max: accMax
             },
           },
         },
@@ -119,20 +112,23 @@ function App() {
     if (!chartInstance.current) return;
     chartInstance.current.options.scales.y.min = lossMin;
     chartInstance.current.options.scales.y.max = lossMax;
-    chartInstance.current.options.scales.y2.min = accMin;
-    chartInstance.current.options.scales.y2.max = accMax;
     chartInstance.current.update();
-  }, [lossMin, lossMax, accMin, accMax]);
+  }, [lossMin, lossMax]);
 
-  // 更新Chart数据
+  // 更新Chart数据（x轴为时间，y轴为loss）
   useEffect(() => {
     if (!chartInstance.current) return;
     const chart = chartInstance.current;
-    chart.data.labels = history.map(d => d.epoch || d.batch || history.indexOf(d)+1);
+    chart.data.labels = history.map(d => {
+      if (d.timestamp) {
+        const t = new Date(d.timestamp);
+        return t.toLocaleTimeString('en-US', { hour12: false });
+      }
+      return '';
+    });
     chart.data.datasets[0].data = history.map(d => d.loss);
-    chart.data.datasets[1].data = history.map(d => d.accuracy);
     chart.update();
-  }, [history]);
+  }, [history, lossMin, lossMax]);
 
   // 展示自定义指标
   const customMetrics = metrics.custom_metrics || {};
@@ -153,6 +149,24 @@ function App() {
     <div style={{ minHeight: '100vh', width: '100vw', background: '#f4f6fa', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
       <div style={{ width: '100%', maxWidth: 800, margin: '0 auto', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
         <h2 style={{ textAlign: 'center', margin: '32px 0 16px 0', color: '#2b4a6f' }}>AI训练实时监控</h2>
+        {/* 阈值设置区域（可折叠） */}
+        <div style={{ marginBottom: 18 }}>
+          <button onClick={() => setShowThreshold(v => !v)} style={{ background: '#2b4a6f', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 16px', cursor: 'pointer', fontWeight: 500, marginBottom: 8 }}>
+            {showThreshold ? '收起阈值设置 ▲' : '展开阈值设置 ▼'}
+          </button>
+          {showThreshold && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', background: '#f8f8f8', borderRadius: 8, padding: 12, marginTop: 8 }}>
+              <span style={labelStyle}>Loss范围:</span>
+              <input type="number" value={lossMin} onChange={e => setLossMin(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
+              <span>~</span>
+              <input type="number" value={lossMax} onChange={e => setLossMax(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
+              <span style={{ marginLeft: 24, ...labelStyle }}>Accuracy范围:</span>
+              <input type="number" value={accMin} onChange={e => setAccMin(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
+              <span>~</span>
+              <input type="number" value={accMax} onChange={e => setAccMax(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
+            </div>
+          )}
+        </div>
         <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
           <label style={labelStyle}>Training ID:</label>
           <select value={trainingId} onChange={e => setTrainingId(e.target.value)} style={{ width: 260, height: 32, borderRadius: 6, border: '1px solid #bbb', padding: '0 8px' }}>
@@ -168,7 +182,6 @@ function App() {
             <div><span style={labelStyle}>Epoch:</span><span style={valueStyle}>{metrics.epoch}</span></div>
             <div><span style={labelStyle}>Batch:</span><span style={valueStyle}>{metrics.batch}</span></div>
             <div><span style={labelStyle}>Loss:</span><span style={valueStyle}>{metrics.loss}</span></div>
-            <div><span style={labelStyle}>Accuracy:</span><span style={valueStyle}>{metrics.accuracy}</span></div>
             <div><span style={labelStyle}>Learning Rate:</span><span style={valueStyle}>{metrics.learning_rate}</span></div>
           </div>
           {Object.keys(customMetrics).length > 0 && <div style={{ marginTop: 8 }}>自定义指标:
@@ -178,26 +191,11 @@ function App() {
           </div>}
         </div>
         <div style={cardStyle}>
-          <strong style={{ fontSize: 18, color: '#2b4a6f' }}>Loss/Accuracy 曲线（所有历史数据）</strong>
+          <strong style={{ fontSize: 18, color: '#2b4a6f' }}>Loss 曲线（所有历史数据）</strong>
           <canvas ref={chartRef} height={320}></canvas>
         </div>
         <div style={{ marginTop: 16, color: '#888', fontSize: 13, textAlign: 'center' }}>
           {history.length === 0 ? '等待训练数据推送...' : `已接收 ${history.length} 条数据`}
-        </div>
-        {/* 阈值设置区域 */}
-        <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={labelStyle}>Loss范围:</span>
-            <input type="number" value={lossMin} onChange={e => setLossMin(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
-            <span>~</span>
-            <input type="number" value={lossMax} onChange={e => setLossMax(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ ...labelStyle, marginLeft: 0 }}>Accuracy范围:</span>
-            <input type="number" value={accMin} onChange={e => setAccMin(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
-            <span>~</span>
-            <input type="number" value={accMax} onChange={e => setAccMax(Number(e.target.value))} style={{ width: 60, borderRadius: 4, border: '1px solid #bbb', padding: '2px 6px' }} />
-          </div>
         </div>
       </div>
     </div>
