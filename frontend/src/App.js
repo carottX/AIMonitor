@@ -50,8 +50,11 @@ function App() {
       if (event.data === 'ping') return;
       const data = JSON.parse(event.data);
       setMetrics(data);
-      setHistory(h => [...h, data]);
-      // 不再 setStatus('ok')，只在 onopen 时设置
+      setHistory(h => {
+        // 只保留最近10条
+        const newHist = [...h, data].slice(-10);
+        return newHist;
+      });
     };
     return () => {
       ws.close();
@@ -108,34 +111,53 @@ function App() {
   // 展示自定义指标
   const customMetrics = metrics.custom_metrics || {};
 
+  // 美化样式
+  const cardStyle = {
+    background: '#fff',
+    boxShadow: '0 2px 8px #eee',
+    borderRadius: 10,
+    padding: 24,
+    margin: '24px 0',
+    maxWidth: 700
+  };
+  const labelStyle = { color: '#888', fontWeight: 500, marginRight: 8 };
+  const valueStyle = { color: '#222', fontWeight: 600 };
+
   return (
-    <div style={{ maxWidth: 700, margin: 'auto', padding: 20 }}>
-      <h2>AI训练实时监控</h2>
-      <div style={{ marginBottom: 10 }}>
-        <label>Training ID: </label>
-        <select value={trainingId} onChange={e => setTrainingId(e.target.value)} style={{ width: 240 }}>
-          <option value="" disabled>请选择训练任务</option>
-          {allTrainings.map(tid => <option key={tid} value={tid}>{tid}</option>)}
-        </select>
-        <span style={{ marginLeft: 16, color: status==='ok'?'green':'orange' }}>{status==='ok'?'● 已连接': status==='connecting'?'● 连接中':'● 断开'}</span>
-      </div>
-      {errorMsg && <div style={{ color: 'red', marginBottom: 10 }}>{errorMsg}</div>}
-      <div style={{ margin: '20px 0', background: '#f8f8f8', padding: 12, borderRadius: 6 }}>
-        <strong>最新指标：</strong>
-        <div>Epoch: {metrics.epoch}</div>
-        <div>Batch: {metrics.batch}</div>
-        <div>Loss: {metrics.loss}</div>
-        <div>Accuracy: {metrics.accuracy}</div>
-        <div>Learning Rate: {metrics.learning_rate}</div>
-        {Object.keys(customMetrics).length > 0 && <div>自定义指标:
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            {Object.entries(customMetrics).map(([k, v]) => <li key={k}>{k}: {v}</li>)}
-          </ul>
-        </div>}
-      </div>
-      <canvas ref={chartRef} height={320}></canvas>
-      <div style={{ marginTop: 16, color: '#888', fontSize: 13 }}>
-        {history.length === 0 ? '等待训练数据推送...' : `已接收 ${history.length} 条数据`}
+    <div style={{ minHeight: '100vh', width: '100vw', background: '#f4f6fa', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
+      <div style={{ width: '100%', maxWidth: 800, margin: '0 auto', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+        <h2 style={{ textAlign: 'center', margin: '32px 0 16px 0', color: '#2b4a6f' }}>AI训练实时监控</h2>
+        <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <label style={labelStyle}>Training ID:</label>
+          <select value={trainingId} onChange={e => setTrainingId(e.target.value)} style={{ width: 260, height: 32, borderRadius: 6, border: '1px solid #bbb', padding: '0 8px' }}>
+            <option value="" disabled>请选择训练任务</option>
+            {allTrainings.map(tid => <option key={tid} value={tid}>{tid}</option>)}
+          </select>
+          <span style={{ marginLeft: 16, color: status==='ok'?'#52c41a':status==='connecting'?'#faad14':'#f5222d', fontWeight: 700 }}>{status==='ok'?'● 已连接': status==='connecting'?'● 连接中':'● 断开'}</span>
+        </div>
+        {errorMsg && <div style={{ color: '#f5222d', marginBottom: 10 }}>{errorMsg}</div>}
+        <div style={cardStyle}>
+          <strong style={{ fontSize: 18, color: '#2b4a6f' }}>最新指标</strong>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, margin: '16px 0' }}>
+            <div><span style={labelStyle}>Epoch:</span><span style={valueStyle}>{metrics.epoch}</span></div>
+            <div><span style={labelStyle}>Batch:</span><span style={valueStyle}>{metrics.batch}</span></div>
+            <div><span style={labelStyle}>Loss:</span><span style={valueStyle}>{metrics.loss}</span></div>
+            <div><span style={labelStyle}>Accuracy:</span><span style={valueStyle}>{metrics.accuracy}</span></div>
+            <div><span style={labelStyle}>Learning Rate:</span><span style={valueStyle}>{metrics.learning_rate}</span></div>
+          </div>
+          {Object.keys(customMetrics).length > 0 && <div style={{ marginTop: 8 }}>自定义指标:
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {Object.entries(customMetrics).map(([k, v]) => <li key={k}>{k}: {v}</li>)}
+            </ul>
+          </div>}
+        </div>
+        <div style={cardStyle}>
+          <strong style={{ fontSize: 18, color: '#2b4a6f' }}>Loss/Accuracy 曲线（最近10条）</strong>
+          <canvas ref={chartRef} height={320}></canvas>
+        </div>
+        <div style={{ marginTop: 16, color: '#888', fontSize: 13, textAlign: 'center' }}>
+          {history.length === 0 ? '等待训练数据推送...' : `已接收 ${history.length} 条数据`}
+        </div>
       </div>
     </div>
   );

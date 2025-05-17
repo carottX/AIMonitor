@@ -44,7 +44,7 @@ def report_progress_to_server(epoch, loss, accuracy=None, batch=None, total_batc
 if __name__ == "__main__":
     # 假设有100个epoch，每10个batch上报一次
     num_epochs = 3
-    batches_per_epoch = 10
+    batches_per_epoch = 100000
     for epoch in range(1, num_epochs+1):
         for batch in range(1, batches_per_epoch+1):
             # 这里用随机数模拟loss/accuracy
